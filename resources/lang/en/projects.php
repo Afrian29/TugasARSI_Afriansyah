@@ -36,6 +36,7 @@ return [
         'calendar' => 'Calendar',
         'resources' => 'Members',
         'gantt' => 'Gantt',
+        'resource_chart' => 'Resource chart',
         'pert' => 'PERT',
     ],
 ];

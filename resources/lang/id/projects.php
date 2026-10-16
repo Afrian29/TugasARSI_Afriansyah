@@ -36,6 +36,7 @@ return [
         'calendar' => 'Kalender',
         'resources' => 'Anggota',
         'gantt' => 'Gantt',
+        'resource_chart' => 'Beban kerja',
         'pert' => 'PERT',
     ],
 ];

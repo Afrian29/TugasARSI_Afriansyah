@@ -9,6 +9,7 @@ use App\Livewire\Pert\Index as PertIndex;
 use App\Livewire\Projects\Form as ProjectForm;
 use App\Livewire\Projects\Index as ProjectIndex;
 use App\Livewire\Projects\Show as ProjectShow;
+use App\Livewire\ResourceChart\Index as ResourceChartIndex;
 use App\Livewire\Resources\Index as ResourceIndex;
 use App\Livewire\Tasks\Index as TaskIndex;
 use Illuminate\Support\Facades\Route;
@@ -23,6 +24,7 @@ Route::get('/projects/{project}/tasks', TaskIndex::class)->name('projects.tasks'
 Route::get('/projects/{project}/calendar', CalendarIndex::class)->name('projects.calendar');
 Route::get('/projects/{project}/resources', ResourceIndex::class)->name('projects.resources');
 Route::get('/projects/{project}/gantt', GanttIndex::class)->name('projects.gantt');
+Route::get('/projects/{project}/resource-chart', ResourceChartIndex::class)->name('projects.resource-chart');
 Route::get('/projects/{project}/pert', PertIndex::class)->name('projects.pert');
 
 Route::get('/health', static fn () => response()->json(['status' => 'ok', 'time' => now()->toIso8601String()]));

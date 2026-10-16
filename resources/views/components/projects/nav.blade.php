@@ -7,6 +7,7 @@
         'calendar' => ['label' => __('projects.tabs.calendar'), 'route' => 'projects.calendar'],
         'resources' => ['label' => __('projects.tabs.resources'), 'route' => 'projects.resources'],
         'gantt' => ['label' => __('projects.tabs.gantt'), 'route' => 'projects.gantt'],
+        'resource_chart' => ['label' => __('projects.tabs.resource_chart'), 'route' => 'projects.resource-chart'],
         'pert' => ['label' => __('projects.tabs.pert'), 'route' => 'projects.pert'],
     ];
 @endphp
