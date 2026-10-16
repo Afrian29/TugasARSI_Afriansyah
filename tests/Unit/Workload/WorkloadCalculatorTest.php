@@ -279,3 +279,31 @@ it('calculates a 500-task, 20-member workload in under one second', function () 
         ->and($result->dayFor(20, '2026-01-06')?->load)->toBe(100)
         ->and($elapsedSeconds)->toBeLessThan(1.0);
 });
+
+it('adds partial allocations: two tasks at 50% on the same day = 100%, not overallocated', function () {
+    // Resource Chart part 3. Hand calc: Jan 6 2026 is a Tuesday (working day,
+    // capacity 100). Task 1 at 50% allocation + task 2 at 50% allocation are
+    // both active that day → load = 50 + 50 = 100 = capacity → NOT
+    // overallocated, and both tasks contribute to the day.
+    $tasks = [
+        new WorkloadTask(1, wlDate('2026-01-06'), wlDate('2026-01-06')),
+        new WorkloadTask(2, wlDate('2026-01-06'), wlDate('2026-01-06')),
+    ];
+    $assignments = [
+        new WorkloadAssignment(1, 10, 50),
+        new WorkloadAssignment(2, 10, 50),
+    ];
+
+    $result = (new WorkloadCalculator)->calculate($tasks, $assignments, wlCalendar());
+    $day = $result->dayFor(10, '2026-01-06');
+
+    expect($day?->load)->toBe(100)
+        ->and($day?->capacity)->toBe(100)
+        ->and($day?->overallocated)->toBeFalse()
+        ->and($day?->taskIds)->toBe([1, 2]);
+});
+
+it('rejects an allocation outside 1-100', function () {
+    // Validated at the domain edge too (the assignment UI validates 1–100).
+    new WorkloadAssignment(1, 10, 0);
+})->throws(InvalidArgumentException::class);

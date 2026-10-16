@@ -14,7 +14,23 @@
                 </button>
             @endforeach
         </div>
-        <div class="text-xs text-slate-500">{{ __('resource_chart.legend_peak') }}</div>
+        {{-- Filters (part 3): by member and by date range. --}}
+        <div class="flex items-center gap-2 text-sm flex-wrap">
+            <label class="text-slate-500">{{ __('tasks.filter_member') }}</label>
+            <select wire:model.live="memberFilter" class="border border-slate-300 rounded-lg px-2 py-1.5 text-sm">
+                <option value="">{{ __('tasks.all_members') }}</option>
+                @foreach ($members as $member)
+                    <option value="{{ $member->id }}">{{ $member->name }}</option>
+                @endforeach
+            </select>
+            <label class="text-slate-500">{{ __('resource_chart.date_from') }}</label>
+            <input type="date" wire:model.live="dateFrom" class="border border-slate-300 rounded-lg px-2 py-1.5 text-sm" />
+            <label class="text-slate-500">{{ __('resource_chart.date_to') }}</label>
+            <input type="date" wire:model.live="dateTo" class="border border-slate-300 rounded-lg px-2 py-1.5 text-sm" />
+            <button wire:click="resetFilters" class="px-3 py-1.5 rounded-lg border border-slate-300 text-sm text-slate-600 hover:bg-slate-50">
+                {{ __('resource_chart.reset_filters') }}
+            </button>
+        </div>
     </div>
 
     <div class="flex items-center gap-4 text-xs text-slate-500 mb-3 flex-wrap">
@@ -23,14 +39,38 @@
         <span class="flex items-center gap-1" title="{{ __('resource_chart.legend_over_note') }}">⏰ {{ __('resource_chart.legend_leave') }}</span>
         <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 bg-amber-100 border border-amber-300"></span> {{ __('resource_chart.legend_nonworking') }}</span>
         <span class="flex items-center gap-1">{{ __('resource_chart.legend_idle') }}</span>
+        <span class="flex items-center gap-1">{{ __('resource_chart.drill_hint') }}</span>
         <span class="flex items-center gap-1"><span class="inline-block w-4 border-t-2 border-dashed border-rose-500"></span> {{ __('resource_chart.today') }}</span>
         {{-- PRD §9 accessibility: overallocation is never signalled by colour alone. --}}
         <span class="sr-only">{{ __('resource_chart.legend_over_note') }}</span>
     </div>
 
     @if ($empty || ! $rows)
-        <div class="bg-white rounded-xl shadow p-8 text-center text-slate-400">{{ __('resource_chart.empty') }}</div>
+        <div class="bg-white rounded-xl shadow p-8 text-center text-slate-400">{{ $emptyMessage }}</div>
     @else
+        {{-- Drill-down (part 3): tasks contributing to the clicked bar. --}}
+        @if ($drill !== null)
+            <div class="bg-white rounded-xl shadow p-4 mb-4">
+                <div class="flex items-center justify-between mb-2 gap-3">
+                    <h3 class="text-sm font-semibold">{{ __('resource_chart.drill_title', ['label' => $drill['label'], 'from' => $drill['from'], 'to' => $drill['to']]) }}</h3>
+                    <button wire:click="closeDrill" class="text-xs text-slate-500 underline">{{ __('resource_chart.drill_close') }}</button>
+                </div>
+                @if ($drill['tasks'] === [])
+                    <p class="text-sm text-slate-400">{{ __('resource_chart.drill_empty') }}</p>
+                @else
+                    <ul class="text-sm divide-y divide-slate-100">
+                        @foreach ($drill['tasks'] as $task)
+                            <li class="py-1.5 flex items-center justify-between gap-2">
+                                <a class="underline text-indigo-700" href="{{ $task['url'] }}">{{ $task['name'] }}</a>
+                                @if ($task['dates'] !== null)
+                                    <span class="text-xs text-slate-400">{{ $task['dates'] }}</span>
+                                @endif
+                            </li>
+                        @endforeach
+                    </ul>
+                @endif
+            </div>
+        @endif
         <div class="bg-white rounded-xl shadow overflow-hidden">
             <div class="flex">
                 {{-- Left: member list --}}
@@ -72,21 +112,23 @@
                             <rect x="{{ $column['x'] }}" y="34" width="{{ $dayWidth }}" height="{{ $height - 34 }}" fill="{{ $column['holiday'] ? '#fde68a' : '#f1f5f9' }}" opacity="{{ $column['holiday'] ? 0.5 : 0.8 }}" />
                         @endforeach
 
-                        {{-- Load bars --}}
+                        {{-- Load bars (clickable: drill down into contributing tasks) --}}
                         @foreach ($rows as $row)
                             @foreach ($row['bars'] as $bar)
-                                <rect x="{{ $bar['x'] }}" y="{{ $bar['top'] }}" width="{{ $bar['w'] }}" height="{{ $bar['height'] }}" rx="3"
-                                      fill="{{ $bar['fill'] }}" stroke="{{ $bar['stroke'] }}" stroke-width="{{ $bar['strokeWidth'] }}">
-                                    {{-- Tooltip text only on flagged bars (overallocated / leave conflict) —
-                                         keeps large charts light while explaining every conflict. --}}
-                                    @if ($bar['flagged'])
-                                        <title>{{ $bar['title'] }}</title>
+                                <g wire:click="drill({{ $row['memberId'] }}, '{{ $bar['from'] }}', '{{ $bar['to'] }}')" style="cursor: pointer">
+                                    <rect x="{{ $bar['x'] }}" y="{{ $bar['top'] }}" width="{{ $bar['w'] }}" height="{{ $bar['height'] }}" rx="3"
+                                          fill="{{ $bar['fill'] }}" stroke="{{ $bar['stroke'] }}" stroke-width="{{ $bar['strokeWidth'] }}">
+                                        {{-- Tooltip text only on flagged bars (overallocated / leave conflict) —
+                                             keeps large charts light while explaining every conflict. --}}
+                                        @if ($bar['flagged'])
+                                            <title>{{ $bar['title'] }}</title>
+                                        @endif
+                                    </rect>
+                                    <text x="{{ $bar['cx'] }}" y="{{ $bar['valueY'] }}" font-size="9" fill="#ffffff" text-anchor="middle">{{ $bar['value'] }}</text>
+                                    @if ($bar['markerY'] !== null)
+                                        <text x="{{ $bar['cx'] }}" y="{{ $bar['markerY'] }}" font-size="8" fill="#ffffff" text-anchor="middle">{{ $bar['marker'] }}</text>
                                     @endif
-                                </rect>
-                                <text x="{{ $bar['cx'] }}" y="{{ $bar['valueY'] }}" font-size="9" fill="#ffffff" text-anchor="middle">{{ $bar['value'] }}</text>
-                                @if ($bar['markerY'] !== null)
-                                    <text x="{{ $bar['cx'] }}" y="{{ $bar['markerY'] }}" font-size="8" fill="#ffffff" text-anchor="middle">{{ $bar['marker'] }}</text>
-                                @endif
+                                </g>
                             @endforeach
                         @endforeach
 

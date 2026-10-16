@@ -169,14 +169,23 @@
                             <label class="block text-sm font-medium mb-1">{{ __('tasks.assignees') }}</label>
                             <div class="flex flex-wrap gap-3">
                                 @forelse ($resources as $resource)
-                                    <label class="flex items-center gap-1.5 text-sm border border-slate-200 rounded-lg px-3 py-1.5 has-[:checked]:bg-indigo-50 has-[:checked]:border-indigo-400">
-                                        <input type="checkbox" wire:model="assignedResourceIds" value="{{ $resource->id }}" class="rounded">
-                                        {{ $resource->name }}
-                                    </label>
+                                    <div class="flex items-center gap-1.5 text-sm border border-slate-200 rounded-lg px-3 py-1.5 has-[:checked]:bg-indigo-50 has-[:checked]:border-indigo-400">
+                                        <label class="flex items-center gap-1.5">
+                                            <input type="checkbox" wire:model="assignedResourceIds" value="{{ $resource->id }}" class="rounded">
+                                            {{ $resource->name }}
+                                        </label>
+                                        {{-- Resource Chart part 3: allocation percent per assignment (1–100). --}}
+                                        <input type="number" min="1" max="100" wire:model="assignedAllocations.{{ $resource->id }}"
+                                               @disabled(! in_array((int) $resource->id, array_map('intval', $assignedResourceIds), true))
+                                               aria-label="{{ __('tasks.allocation') }} {{ $resource->name }}"
+                                               class="w-14 border border-slate-300 rounded px-1.5 py-0.5 text-xs">
+                                        <span class="text-xs text-slate-400">%</span>
+                                    </div>
                                 @empty
                                     <span class="text-xs text-slate-400">{{ __('tasks.no_resources') }} <a class="underline" href="{{ route('projects.resources', $project) }}">{{ __('tasks.add_resources') }}</a></span>
                                 @endforelse
                             </div>
+                            <p class="text-xs text-slate-400 mt-1">{{ __('tasks.allocation_hint') }}</p>
                         </div>
                     </div>
 

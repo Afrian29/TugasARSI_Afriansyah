@@ -197,3 +197,144 @@ it('renders a 500-task project chart in under one second', function () {
 
     expect($elapsedSeconds)->toBeLessThan(1.0);
 });
+
+// ---------------------------------------------------------------------------
+// Resource Chart part 3: drill-down, filters, allocation per assignment.
+// ---------------------------------------------------------------------------
+
+it('drills down into the tasks contributing to a bar, each linking to the task', function () {
+    $project = chartProject();
+    $ana = Resource::where('name', 'Ana')->firstOrFail();
+    $design = Task::where('name', 'Design')->firstOrFail();
+    $review = Task::where('name', 'Review')->firstOrFail();
+
+    // Ana's Jan 6 bar is 200% = Design + Review, both link to the task.
+    Livewire::test(ResourceChart::class, ['project' => $project])
+        ->call('drill', $ana->id, '2026-01-06', '2026-01-06')
+        ->assertSee('Contributing tasks')
+        ->assertSee('Design')
+        ->assertSee('Review')
+        ->assertSee(route('projects.tasks', $project).'?task='.$design->id, false)
+        ->assertSee(route('projects.tasks', $project).'?task='.$review->id, false);
+
+    // Jan 5 contributes only Design.
+    Livewire::test(ResourceChart::class, ['project' => $project])
+        ->call('drill', $ana->id, '2026-01-05', '2026-01-05')
+        ->assertSee('Design')
+        ->assertDontSee('Review');
+
+    // The unassigned row drills into the unassigned series (Spike, Jan 7).
+    Livewire::test(ResourceChart::class, ['project' => $project])
+        ->call('drill', 0, '2026-01-07', '2026-01-07')
+        ->assertSee('Spike');
+
+    // Closing the drill-down hides the list again.
+    Livewire::test(ResourceChart::class, ['project' => $project])
+        ->call('drill', $ana->id, '2026-01-06', '2026-01-06')
+        ->call('closeDrill')
+        ->assertDontSee('Contributing tasks');
+});
+
+it('filters the chart by member', function () {
+    $project = chartProject();
+    $ana = Resource::where('name', 'Ana')->firstOrFail();
+    $budi = Resource::where('name', 'Budi')->firstOrFail();
+
+    Livewire::test(ResourceChart::class, ['project' => $project])
+        ->assertSee('200%')
+        ->set('memberFilter', $budi->id)
+        // Only Budi's (idle) row remains: Ana's 200% bar and the
+        // "Unassigned tasks" row are filtered out.
+        ->assertSee('Budi')
+        ->assertDontSee('200%')
+        ->assertDontSee('Unassigned tasks');
+
+    // Resetting the filter restores every row.
+    Livewire::test(ResourceChart::class, ['project' => $project])
+        ->set('memberFilter', $ana->id)
+        ->assertDontSee('Unassigned tasks')
+        ->call('resetFilters')
+        ->assertSee('Ana')
+        ->assertSee('Unassigned tasks')
+        ->assertSee('200%');
+});
+
+it('filters the chart by date range', function () {
+    $project = chartProject();
+
+    // Window = Jan 5 only: Ana's Jan 6 200% bar and the Jan 7 unassigned
+    // task drop out; the remaining bar is 100%.
+    Livewire::test(ResourceChart::class, ['project' => $project])
+        ->set('dateFrom', '2026-01-05')
+        ->set('dateTo', '2026-01-05')
+        ->assertSee('100%')
+        ->assertDontSee('200%')
+        ->assertDontSee('Spike');
+
+    // A window outside the project range shows the range-specific empty state.
+    Livewire::test(ResourceChart::class, ['project' => $project])
+        ->set('dateFrom', '2027-01-01')
+        ->set('dateTo', '2027-01-02')
+        ->assertSee('No load in the selected date range.');
+});
+
+it('stores the allocation percent from the task assignment UI and uses it in the chart', function () {
+    $project = chartProject();
+    $ana = Resource::where('name', 'Ana')->firstOrFail();
+    $design = Task::where('name', 'Design')->firstOrFail();
+    $review = Task::where('name', 'Review')->firstOrFail();
+
+    // Both of Ana's overlapping tasks go to 50%: Jan 6 becomes 50% + 50% =
+    // 100% load — not overallocated anymore.
+    Livewire::test(TasksIndex::class, ['project' => $project])
+        ->call('edit', $design->id)
+        ->assertSet('assignedAllocations.'.$ana->id, 100) // default is pre-filled
+        ->set('assignedAllocations', [$ana->id => 50])
+        ->call('save');
+
+    Livewire::test(TasksIndex::class, ['project' => $project])
+        ->call('edit', $review->id)
+        ->set('assignedAllocations', [$ana->id => 50])
+        ->call('save');
+
+    expect(Assignment::where('task_id', $design->id)->where('resource_id', $ana->id)->value('allocation'))->toBe(50)
+        ->and(Assignment::where('task_id', $review->id)->where('resource_id', $ana->id)->value('allocation'))->toBe(50);
+
+    // The chart reads the stored allocation: 50 + 50 = 100%, no flags.
+    Livewire::test(ResourceChart::class, ['project' => $project])
+        ->assertSee('100%')
+        ->assertDontSee('200%')
+        ->assertDontSee('Overallocated: load');
+});
+
+it('validates the allocation percent between 1 and 100', function () {
+    $project = chartProject();
+    $ana = Resource::where('name', 'Ana')->firstOrFail();
+    $design = Task::where('name', 'Design')->firstOrFail();
+
+    Livewire::test(TasksIndex::class, ['project' => $project])
+        ->call('edit', $design->id)
+        ->set('assignedAllocations', [$ana->id => 150])
+        ->call('save')
+        ->assertHasErrors(['assignedAllocations.'.$ana->id => 'max']);
+
+    Livewire::test(TasksIndex::class, ['project' => $project])
+        ->call('edit', $design->id)
+        ->set('assignedAllocations', [$ana->id => 0])
+        ->call('save')
+        ->assertHasErrors(['assignedAllocations.'.$ana->id => 'min']);
+
+    // The rejected saves left the stored assignment untouched (still 100).
+    expect(Assignment::where('task_id', $design->id)->where('resource_id', $ana->id)->value('allocation'))->toBe(100);
+});
+
+it('opens the task edit modal from the drill-down link (?task= deep link)', function () {
+    $project = chartProject();
+    $design = Task::where('name', 'Design')->firstOrFail();
+
+    Livewire::withQueryParams(['task' => $design->id])
+        ->test(TasksIndex::class, ['project' => $project])
+        ->assertSet('editingId', $design->id)
+        ->assertSet('showModal', true)
+        ->assertSet('name', 'Design');
+});

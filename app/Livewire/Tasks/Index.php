@@ -58,6 +58,13 @@ class Index extends Component
     /** @var list<int> */
     public array $assignedResourceIds = [];
 
+    /**
+     * Resource Chart part 3: allocation percent per assigned member (1–100).
+     *
+     * @var array<int|string, int>
+     */
+    public array $assignedAllocations = [];
+
     // Predecessor quick-add (DEP-1..DEP-4)
     /** @var array{task_id: int|string|null, type: string, lag: int|string} */
     public array $newPredecessor = ['task_id' => null, 'type' => 'FS', 'lag' => 0];
@@ -69,6 +76,23 @@ class Index extends Component
 
     /** ASN-5: filter the schedule by member */
     public ?int $memberFilter = null;
+
+    public function mount(Project $project): void
+    {
+        $this->project = $project;
+
+        // Deep link from the Resource Chart drill-down: /projects/x/tasks?task=ID
+        // opens the task's edit modal directly (Resource Chart part 3).
+        $taskId = (int) request()->query('task', 0);
+
+        if ($taskId > 0) {
+            $task = Task::query()->where('project_id', $project->id)->find($taskId);
+
+            if ($task !== null) {
+                $this->edit($task->id);
+            }
+        }
+    }
 
     public function create(): void
     {
@@ -89,6 +113,11 @@ class Index extends Component
         $this->percentComplete = $task->percent_complete;
         $this->parentId = $task->parent_id;
         $this->assignedResourceIds = $task->assignments()->pluck('resource_id')->map('intval')->all();
+        // Resource Chart part 3: pre-fill each member's allocation percent.
+        $this->assignedAllocations = $task->assignments()
+            ->get()
+            ->mapWithKeys(static fn (Assignment $assignment): array => [$assignment->resource_id => (int) ($assignment->allocation ?? 100)])
+            ->all();
         $this->reset(['newPredecessor', 'dependencyErrors']);
         $this->showModal = true;
     }
@@ -149,6 +178,8 @@ class Index extends Component
                     'task_id' => $task->id,
                     'resource_id' => $resource->id,
                     'role' => $resource->role,
+                    // Resource Chart part 3: validated 1–100, default 100.
+                    'allocation' => (int) ($this->assignedAllocations[$resourceId] ?? 100),
                 ]);
             }
         }
@@ -383,6 +414,9 @@ class Index extends Component
                     $fail(__('tasks.errors.parent_depth'));
                 }
             }],
+            'assignedAllocations' => ['array'],
+            // Resource Chart part 3: allocation percent per assignment, 1–100.
+            'assignedAllocations.*' => ['integer', 'min:1', 'max:100'],
             'assignedResourceIds.*' => ['integer', 'exists:resources,id', function (string $attribute, $value, callable $fail): void {
                 if ((int) $value === 0) {
                     return;
@@ -475,6 +509,7 @@ class Index extends Component
             'percentComplete',
             'parentId',
             'assignedResourceIds',
+            'assignedAllocations',
             'dependencyErrors',
         ]);
 

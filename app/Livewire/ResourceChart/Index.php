@@ -17,9 +17,11 @@ use App\Models\Holiday;
 use App\Models\Project;
 use App\Models\Resource;
 use App\Models\ResourceLeave;
+use App\Models\Task;
 use Carbon\CarbonImmutable;
 use DateTimeImmutable;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Collection;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -43,6 +45,21 @@ class Index extends Component
 
     public string $zoom = 'day';
 
+    /** Member filter (Resource Chart part 3): null = all rows. */
+    public ?int $memberFilter = null;
+
+    /** Date-range filter, Y-m-d; empty = the full project range. */
+    public string $dateFrom = '';
+
+    public string $dateTo = '';
+
+    /** Drill-down state (part 3): the member whose bar was clicked (0 = unassigned row). */
+    public ?int $drillMemberId = null;
+
+    public string $drillFrom = '';
+
+    public string $drillTo = '';
+
     private const ROW_HEIGHT = 28;
 
     private const HEADER_HEIGHT = 34;
@@ -60,6 +77,24 @@ class Index extends Component
         $this->project = $project;
     }
 
+    /** Click a bar: show the tasks contributing to that load in that period. */
+    public function drill(int $memberId, string $from, string $to): void
+    {
+        $this->drillMemberId = $memberId;
+        $this->drillFrom = $from;
+        $this->drillTo = $to;
+    }
+
+    public function closeDrill(): void
+    {
+        $this->reset('drillMemberId', 'drillFrom', 'drillTo');
+    }
+
+    public function resetFilters(): void
+    {
+        $this->reset('memberFilter', 'dateFrom', 'dateTo');
+    }
+
     public function render(): View
     {
         $calendarModel = $this->project->calendar()->first();
@@ -74,9 +109,14 @@ class Index extends Component
 
         $result = $this->workload($workingCalendar);
 
+        $resources = Resource::query()->where('project_id', $this->project->id)->orderBy('name')->get(['id', 'name']);
+
         if ($result->isEmpty()) {
             return view('livewire.resource-chart.index', [
                 'empty' => true,
+                'emptyMessage' => __('resource_chart.empty'),
+                'members' => $resources,
+                'drill' => null,
                 'rows' => [],
                 'units' => [],
                 'shaded' => [],
@@ -88,7 +128,37 @@ class Index extends Component
         }
 
         $dates = $result->dates();
-        /** @var array<string, int> $indexByDate date => position in the range */
+
+        // Date-range filter (part 3): keep only the selected window; invalid
+        // input falls back to the full range.
+        $rangeStart = $this->parseDate($this->dateFrom);
+        $rangeEnd = $this->parseDate($this->dateTo);
+
+        if ($rangeStart !== null || $rangeEnd !== null) {
+            $dates = array_values(array_filter(
+                $dates,
+                static fn (string $date): bool => ($rangeStart === null || $date >= $rangeStart)
+                    && ($rangeEnd === null || $date <= $rangeEnd),
+            ));
+        }
+
+        if ($dates === []) {
+            return view('livewire.resource-chart.index', [
+                'empty' => true,
+                'emptyMessage' => __('resource_chart.empty_range'),
+                'members' => $resources,
+                'drill' => null,
+                'rows' => [],
+                'units' => [],
+                'shaded' => [],
+                'todayX' => null,
+                'width' => 400,
+                'height' => self::HEADER_HEIGHT + 10,
+                'dayWidth' => 26,
+            ]);
+        }
+
+        /** @var array<string, int> $indexByDate date => position in the visible range */
         $indexByDate = array_flip($dates);
 
         $dayWidth = match ($this->zoom) {
@@ -99,19 +169,31 @@ class Index extends Component
 
         $width = max(400, count($dates) * $dayWidth);
 
-        // One row per team member (idle members included), then the
-        // "Unassigned tasks" row fed by the calculator's unassigned series.
-        $resources = Resource::query()->where('project_id', $this->project->id)->orderBy('name')->get(['id', 'name']);
+        // Member filter (part 3): only the selected member's row; the
+        // "Unassigned tasks" row is hidden while a member filter is active.
+        $memberFilter = $this->memberFilter;
+        $memberRows = $memberFilter === null
+            ? $resources
+            : $resources->filter(static fn (Resource $resource): bool => $resource->id === $memberFilter);
 
+        // One row per visible team member (idle members included), then —
+        // when not filtering by member — the "Unassigned tasks" row fed by
+        // the calculator's unassigned series.
         $rows = [];
         $rowIndex = 0;
 
-        foreach ($resources as $resource) {
-            $rows[] = $this->buildRow($rowIndex, $resource->name, $result->daysFor($resource->id), $indexByDate, $dayWidth);
+        foreach ($memberRows as $resource) {
+            $row = $this->buildRow($rowIndex, $resource->name, $result->daysFor($resource->id), $indexByDate, $dayWidth);
+            $row['memberId'] = $resource->id;
+            $rows[] = $row;
             $rowIndex++;
         }
 
-        $rows[] = $this->buildRow($rowIndex, __('resource_chart.unassigned'), $result->unassigned(), $indexByDate, $dayWidth);
+        if ($memberFilter === null) {
+            $row = $this->buildRow($rowIndex, __('resource_chart.unassigned'), $result->unassigned(), $indexByDate, $dayWidth);
+            $row['memberId'] = 0;
+            $rows[] = $row;
+        }
 
         // Non-working day shading (weekends + holidays), day zoom only (GNT-2 style).
         $shaded = [];
@@ -134,6 +216,9 @@ class Index extends Component
 
         return view('livewire.resource-chart.index', [
             'empty' => false,
+            'emptyMessage' => null,
+            'members' => $resources,
+            'drill' => $this->buildDrill($result, $resources),
             'rows' => $rows,
             'units' => $this->buildUnits($dates, $workingDays, $holidayDates, $dayWidth),
             'shaded' => $shaded,
@@ -142,6 +227,79 @@ class Index extends Component
             'height' => self::HEADER_HEIGHT + count($rows) * self::ROW_HEIGHT + 10,
             'dayWidth' => $dayWidth,
         ]);
+    }
+
+    /**
+     * Drill-down data (part 3): the leaf tasks whose load made up the clicked
+     * bar, each linking to the task's edit modal on the tasks page. Reads only
+     * the calculator's per-day task ids.
+     *
+     * @param  Collection<int, Resource>  $resources
+     * @return array{label: string, from: string, to: string, tasks: list<array{id: int, name: string, url: string, dates: string|null}>}|null
+     */
+    private function buildDrill(WorkloadResult $result, $resources): ?array
+    {
+        if ($this->drillMemberId === null) {
+            return null;
+        }
+
+        $series = $this->drillMemberId === 0
+            ? $result->unassigned()
+            : $result->daysFor($this->drillMemberId);
+
+        /** @var array<int, true> $ids */
+        $ids = [];
+
+        foreach ($series as $day) {
+            if ($day->date < $this->drillFrom || $day->date > $this->drillTo) {
+                continue;
+            }
+
+            foreach ($day->taskIds as $taskId) {
+                $ids[$taskId] = true;
+            }
+        }
+
+        $tasks = Task::query()
+            ->where('project_id', $this->project->id)
+            ->whereIn('id', array_keys($ids))
+            ->orderBy('order')
+            ->get(['id', 'name', 'effective_start', 'effective_end']);
+
+        $baseUrl = route('projects.tasks', $this->project);
+        $taskRows = [];
+
+        foreach ($tasks as $task) {
+            $taskRows[] = [
+                'id' => $task->id,
+                'name' => $task->name,
+                'url' => $baseUrl.'?task='.$task->id,
+                'dates' => $task->effective_start !== null && $task->effective_end !== null
+                    ? $task->effective_start->format('Y-m-d').' → '.$task->effective_end->format('Y-m-d')
+                    : null,
+            ];
+        }
+
+        return [
+            'label' => $this->drillMemberId === 0
+                ? __('resource_chart.unassigned')
+                : ($resources->firstWhere('id', $this->drillMemberId)->name ?? ''),
+            'from' => $this->drillFrom,
+            'to' => $this->drillTo,
+            'tasks' => $taskRows,
+        ];
+    }
+
+    /** Strict Y-m-d parse: invalid or empty input means "no filter". */
+    private function parseDate(string $value): ?string
+    {
+        if ($value === '') {
+            return null;
+        }
+
+        $parsed = DateTimeImmutable::createFromFormat('Y-m-d', $value);
+
+        return $parsed !== false && $parsed->format('Y-m-d') === $value ? $value : null;
     }
 
     /**
@@ -365,10 +523,10 @@ class Index extends Component
 
         $assignments = Assignment::query()
             ->where('project_id', $this->project->id)
-            ->get(['task_id', 'resource_id']);
+            ->get(['task_id', 'resource_id', 'allocation']);
 
         $workloadAssignments = $assignments->map(
-            static fn (Assignment $assignment): WorkloadAssignment => new WorkloadAssignment($assignment->task_id, $assignment->resource_id)
+            static fn (Assignment $assignment): WorkloadAssignment => new WorkloadAssignment($assignment->task_id, $assignment->resource_id, (int) ($assignment->allocation ?? 100))
         )->all();
 
         $leaves = ResourceLeave::query()

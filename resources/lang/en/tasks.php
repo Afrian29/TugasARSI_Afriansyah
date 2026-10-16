@@ -12,6 +12,8 @@ return [
     'description' => 'Description',
     'priority' => 'Priority',
     'assignees' => 'Assigned members',
+    'allocation' => 'Allocation',
+    'allocation_hint' => 'Allocation is the share of a full working day (1–100%, default 100%).',
     'duration' => 'Duration',
     'day' => 'day',
     'days' => 'days',

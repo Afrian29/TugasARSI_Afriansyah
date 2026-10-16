@@ -12,6 +12,8 @@ return [
     'description' => 'Deskripsi',
     'priority' => 'Prioritas',
     'assignees' => 'Anggota bertugas',
+    'allocation' => 'Alokasi',
+    'allocation_hint' => 'Alokasi adalah bagian dari hari kerja penuh (1–100%, default 100%).',
     'duration' => 'Durasi',
     'day' => 'hari',
     'days' => 'hari',

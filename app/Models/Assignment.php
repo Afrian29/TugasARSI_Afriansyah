@@ -31,6 +31,12 @@ class Assignment extends Model
         'task_id',
         'resource_id',
         'role',
+        'allocation',
+    ];
+
+    protected $casts = [
+        // Resource Chart part 3: allocation percent per assignment (1–100).
+        'allocation' => 'integer',
     ];
 
     protected $hidden = [
