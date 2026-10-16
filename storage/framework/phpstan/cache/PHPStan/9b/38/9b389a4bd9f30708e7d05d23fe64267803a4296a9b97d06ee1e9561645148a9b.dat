@@ -1,0 +1,6 @@
+O:23:"PHPStan\Cache\CacheItem":2:{s:11:"variableKey";s:83:"v3-6.73.0.6-8.5.10-cbd21b080aaeb0e9f84c9e83abec0bb3885d1b17fc37a834bec43a4114a2319e";s:4:"data";a:17:{s:4:"name";s:15:"skipWithoutDusk";s:10:"parameters";a:0:{}s:16:"returnsReference";b:0;s:10:"returnType";a:2:{s:5:"class";s:55:"PHPStan\BetterReflection\Reflection\ReflectionNamedType";s:4:"data";a:2:{s:4:"name";s:5:"never";s:12:"isIdentifier";b:1;}}s:10:"attributes";a:0:{}s:10:"docComment";s:211:"/**
+ * Skip the current test when Dusk is unavailable.
+ *
+ * Pest's TestCall stubs don't expose markTestSkipped(), so we throw the
+ * underlying PHPUnit skip exception directly — Pest reports it as a skip.
+ */";s:9:"startLine";i:28;s:7:"endLine";i:31;s:11:"startColumn";i:1;s:9:"endColumn";i:1;s:10:"couldThrow";b:1;s:9:"isClosure";b:0;s:11:"isGenerator";b:0;s:10:"isVariadic";b:0;s:8:"isStatic";b:0;s:9:"namespace";N;s:13:"locatedSource";a:2:{s:5:"class";s:60:"PHPStan\BetterReflection\SourceLocator\Located\LocatedSource";s:4:"data";a:2:{s:4:"name";s:15:"skipWithoutDusk";s:8:"filename";s:67:"C:/xampp/htdocs/proyekArsi/tests/Feature/VisualizationSmokeTest.php";}}}}

@@ -1,0 +1,41 @@
+<?php
+
+declare(strict_types=1);
+
+return [
+    'index_title' => 'Projects',
+    'create' => 'New project',
+    'create_title' => 'Create project',
+    'edit_title' => 'Edit project',
+    'empty' => 'No projects yet. Create your first project to build a schedule.',
+    'name' => 'Name',
+    'organization' => 'Organization',
+    'description' => 'Description',
+    'tasks_count' => 'Tasks',
+    'resources_count' => 'Members',
+    'dependencies_count' => 'Dependencies',
+    'start_date' => 'Project start',
+    'end_date' => 'Project end',
+    'total_duration_wd' => 'Total duration',
+    'working_days' => 'working days',
+    'schedule_summary' => 'Schedule summary',
+    'critical_tasks' => 'Critical path tasks',
+    'no_critical' => 'No critical tasks yet.',
+    'no_organization' => 'No organization',
+    'duration' => 'Schedule',
+    'edit' => 'Edit',
+    'delete' => 'Delete',
+    'cancel' => 'Cancel',
+    'save' => 'Save',
+    'back' => 'Back',
+    'delete_confirm_title' => 'Delete this project?',
+    'delete_confirm_body' => 'All tasks, dependencies, members and calendars of this project will be deleted.',
+    'tabs' => [
+        'overview' => 'Overview',
+        'tasks' => 'Tasks',
+        'calendar' => 'Calendar',
+        'resources' => 'Members',
+        'gantt' => 'Gantt',
+        'pert' => 'PERT',
+    ],
+];

@@ -1,0 +1,41 @@
+<?php
+
+declare(strict_types=1);
+
+return [
+    'index_title' => 'Proyek',
+    'create' => 'Proyek baru',
+    'create_title' => 'Buat proyek',
+    'edit_title' => 'Ubah proyek',
+    'empty' => 'Belum ada proyek. Buat proyek pertama Anda untuk menyusun jadwal.',
+    'name' => 'Nama',
+    'organization' => 'Organisasi',
+    'description' => 'Deskripsi',
+    'tasks_count' => 'Tugas',
+    'resources_count' => 'Anggota',
+    'dependencies_count' => 'Dependensi',
+    'start_date' => 'Mulai proyek',
+    'end_date' => 'Selesai proyek',
+    'total_duration_wd' => 'Total durasi',
+    'working_days' => 'hari kerja',
+    'schedule_summary' => 'Ringkasan jadwal',
+    'critical_tasks' => 'Tugas jalur kritis',
+    'no_critical' => 'Belum ada tugas kritis.',
+    'no_organization' => 'Tanpa organisasi',
+    'duration' => 'Jadwal',
+    'edit' => 'Ubah',
+    'delete' => 'Hapus',
+    'cancel' => 'Batal',
+    'save' => 'Simpan',
+    'back' => 'Kembali',
+    'delete_confirm_title' => 'Hapus proyek ini?',
+    'delete_confirm_body' => 'Semua tugas, dependensi, anggota, dan kalender proyek ini akan dihapus.',
+    'tabs' => [
+        'overview' => 'Ringkasan',
+        'tasks' => 'Tugas',
+        'calendar' => 'Kalender',
+        'resources' => 'Anggota',
+        'gantt' => 'Gantt',
+        'pert' => 'PERT',
+    ],
+];

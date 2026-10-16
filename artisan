@@ -1,0 +1,69 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+define('LARAVEL_START', microtime(true));
+
+if (!defined('STDIN')) {
+    define('STDIN', fopen('php://stdin', 'r'));
+}
+
+if (!defined('STDOUT')) {
+    define('STDOUT', fopen('php://stdout', 'w'));
+}
+
+if (!defined('STDERR')) {
+    define('STDERR', fopen('php://stderr', 'w'));
+}
+
+/*
+|--------------------------------------------------------------------------
+| Check If The Application Is Under Maintenance
+|--------------------------------------------------------------------------
+*/
+
+if (file_exists($maintenance = __DIR__.'/storage/framework/maintenance.php')) {
+    require $maintenance;
+}
+
+/*
+|--------------------------------------------------------------------------
+| Register The Auto Loader
+|--------------------------------------------------------------------------
+*/
+
+require __DIR__.'/vendor/autoload.php';
+
+/*
+|--------------------------------------------------------------------------
+| Run The Artisan Application
+|--------------------------------------------------------------------------
+*/
+
+$app = require_once __DIR__.'/bootstrap/app.php';
+
+$kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
+
+if (!defined('ARGV')) {
+    define('ARGV', $argv ?? []);
+}
+
+if (!defined('ARGC')) {
+    define('ARGC', $argc ?? 0);
+}
+
+$input = new Symfony\Component\Console\Input\ArgvInput(ARGV);
+$output = new Symfony\Component\Console\Output\ConsoleOutput();
+
+$status = $kernel->handle($input, $output);
+
+/*
+|--------------------------------------------------------------------------
+| Shutdown The Application
+|--------------------------------------------------------------------------
+*/
+
+$kernel->terminate($input, $status);
+
+exit($status);

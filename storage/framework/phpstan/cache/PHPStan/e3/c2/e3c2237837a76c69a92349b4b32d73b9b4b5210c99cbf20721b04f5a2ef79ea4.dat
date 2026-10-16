@@ -1,0 +1,1 @@
+O:23:"PHPStan\Cache\CacheItem":2:{s:11:"variableKey";s:74:"v2-2b6b9811445d7965e63cbb238a855c2a991b3e1301fa578b00843e6088f8a7fe-8.5.10";s:4:"data";a:3:{s:7:"classes";a:1:{s:35:"illuminate\log\events\messagelogged";b:1;}s:9:"functions";a:0:{}s:9:"constants";a:0:{}}}

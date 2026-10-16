@@ -1,0 +1,6 @@
+O:23:"PHPStan\Cache\CacheItem":2:{s:11:"variableKey";s:83:"v3-6.73.0.6-8.5.10-ce64c75ed242ab6ec2b3ca58aaa36f0a182b93f7d8bc39d04c36999f11d04097";s:4:"data";a:17:{s:4:"name";s:6:"engine";s:10:"parameters";a:0:{}s:16:"returnsReference";b:0;s:10:"returnType";a:2:{s:5:"class";s:55:"PHPStan\BetterReflection\Reflection\ReflectionNamedType";s:4:"data";a:2:{s:4:"name";s:36:"App\Domain\Scheduling\ScheduleEngine";s:12:"isIdentifier";b:0;}}s:10:"attributes";a:0:{}s:10:"docComment";s:220:"/**
+ * Reference test cases for CPM-1: networks calculated BY HAND, including
+ * SS, lag and holiday cases (PRD CPM-1 acceptance criteria).
+ *
+ * Baseline calendar for all cases: Mon–Fri, no holidays unless stated.
+ */";s:9:"startLine";i:19;s:7:"endLine";i:22;s:11:"startColumn";i:1;s:9:"endColumn";i:1;s:10:"couldThrow";b:0;s:9:"isClosure";b:0;s:11:"isGenerator";b:0;s:10:"isVariadic";b:0;s:8:"isStatic";b:0;s:9:"namespace";N;s:13:"locatedSource";a:2:{s:5:"class";s:60:"PHPStan\BetterReflection\SourceLocator\Located\LocatedSource";s:4:"data";a:2:{s:4:"name";s:6:"engine";s:8:"filename";s:71:"C:/xampp/htdocs/proyekArsi/tests/Unit/Scheduling/ScheduleEngineTest.php";}}}}

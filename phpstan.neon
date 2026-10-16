@@ -1,0 +1,17 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    level: 6
+    paths:
+        - app
+        - database
+        - tests
+    tmpDir: storage/framework/phpstan
+    treatPhpDocTypesAsCertain: false
+    ignoreErrors:
+        # Laravel Dusk's global browser() helper; Dusk is not a dev dependency
+        # yet (see tests/Feature/VisualizationSmokeTest.php — the tests skip).
+        -
+            message: '#Function browser not found#'
+            path: tests/Feature/VisualizationSmokeTest.php
